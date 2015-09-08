@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.5.0/pure-min.css">
+<link rel="stylesheet" href="radar-chart.css">
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+
+<link href='https://fonts.googleapis.com/css?family=Open+Sans:300,800,800italic,600italic,600,400' rel='stylesheet' type='text/css'>
+
+
+<head>
+  <style>
+    body {
+      font-family: 'Open Sans', sans-serif;
+      color: Gray;
+      padding: 20px;
+    }
+    .radar-chart .area {
+      fill-opacity: 0.7;
+    }
+    .radar-chart.focus .area {
+      fill-opacity: 0.3;
+    }
+    .radar-chart.focus .area.focused {
+      fill-opacity: 0.9;
+    }
+    .area.teamA, .teamA .circle {
+      fill: #FFD700;
+      stroke: none;
+    }
+    .area.teamB, .teamB .circle {
+      fill: #ADD8E6;
+      stroke: none;
+    }
+
+
+
+  </style>
+
+  <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+  <script type="text/javascript" src="radar-chart.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+  <script src="load-image.all.min.js"></script>
+  <script type="text/javascript" src="instafeed.min.js"></script>
+
+  <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+
+  <script src="jquery-1.11.2.min.js"></script>
+
+
+  <script type="text/javascript">
+    RadarChart.defaultConfig.color = function() {};
+    RadarChart.defaultConfig.radius = 3;
+  </script>
+
+  <script type="text/javascript">
+    var data = [
+      {
+        className: 'teamA', // optional can be used for styling
+        axes: [
+          {axis: "Job Access", value: 13}, 
+          {axis: "Comfort", value: 1}, 
+          {axis: "Reliability", value: 2},
+          {axis: "Opex Effic.", value: 5},  
+          {axis: "Capex Effic.", value: 4}  
+        ]
+      },
+      {
+        className: 'teamB',
+        axes: [
+          {axis: "Job Access", value: 1}, 
+          {axis: "Comfort", value: 6}, 
+          {axis: "Reliability", value: 2},
+          {axis: "Opex Effic.", value: 1},  
+          {axis: "Capex Effic.", value: 9}  
+        ]
+      }
+    ];
+
+    var regData = [
+      {
+        className: 'teamA', // optional can be used for styling
+        axes: [
+          {axis: "Job Access", value: 1}, 
+          {axis: "Comfort", value: 6}, 
+          {axis: "Reliability", value: 2},
+          {axis: "Opex Effic.", value: 1},  
+          {axis: "Capex Effic.", value: 9}  
+        ]
+      },
+      {
+        className: 'teamB',
+        axes: [
+          {axis: "Job Access", value: 13}, 
+          {axis: "Comfort", value: 1}, 
+          {axis: "Reliability", value: 2},
+          {axis: "Opex Effic.", value: 5},  
+          {axis: "Capex Effic.", value: 4}           
+        ]
+      }
+    ];
+
+    // replace this with data reader for each scale
+    function randomDataset() {
+      return data.map(function(d) {
+        return {
+          className: d.className,
+          axes: d.axes.map(function(axis) {
+            return {axis: axis.axis, value: Math.ceil(Math.random() * 10)};
+          })
+        };
+      });
+    }
+
+  </script>
+
+
+<script>
+
+ var getStops = function (url, cb) {
+   
+  $.getJSON(url, function(data) {
+
+      var stopList = [];
+
+      for (var i=0; i<data.features.length; i++) {
+        var stop = data.features[i];
+
+        if (stop.properties.stopId) {
+          var stopId = stop.properties.stopId;
+          stop.properties['routeId'] = stopId.substr(stopId.indexOf('rte-')+4);
+        }
+
+        stopList.push(L.circle([stop.geometry.coordinates[1], stop.geometry.coordinates[0]], 0, {
+          stroke: false,
+          fillOpacity: 0.0,
+          base: stop.properties
+        }));
+      };
+
+      var stopsLayer = L.layerGroup(stopList);
+      cb(stopsLayer);
+    });
+  };
+
+   getStops('geojson/stations.geojson', function (stops) {
+      var stopTypeSizes = {0: 60, 1: 90, 2: 120};
+      var circleList = [];
+      var stationNameList = [];
+
+      stops.eachLayer(function (marker) {
+        var stationColor = marker.options.base.line,
+            stationLatLng = [marker._latlng.lat, marker._latlng.lng],
+            stationStop = stopTypeSizes[marker.options.base.stopType],
+            stationName = marker.options.base.station,
+            stationNamePopup = L.popup({
+        closeButton: false,
+        className: 'station-sign'
+      }).setContent('<p style="background-color:'
+            +stationColor+';">'+stationName+'</p><br><p style="background-color: white;"></p>')
+      
+        circleList.push(L.circle(stationLatLng, stationStop, {
+          stroke: false,
+          fillColor: stationColor,
+          fillOpacity: 1.0,
+    }).bindPopup(stationNamePopup));
+      
+    });
+      subStopsLayer = L.layerGroup(circleList);
+      subStopsLayer.addTo(mapA);
+    });
+
+  getStops('geojson/stations.geojson', function (stops) {
+      var stopTypeSizes = {0: 60, 1: 90, 2: 120};
+      var circleList = [];
+      var stationNameList = [];
+
+      stops.eachLayer(function (marker) {
+        var stationColor = marker.options.base.line,
+            stationLatLng = [marker._latlng.lat, marker._latlng.lng],
+            stationStop = stopTypeSizes[marker.options.base.stopType],
+            stationName = marker.options.base.station,
+            stationNamePopup = L.popup({
+        closeButton: false,
+        className: 'station-sign'
+      }).setContent('<p style="background-color:'
+            +stationColor+';">'+stationName+'</p><br><p style="background-color: white;"></p>')
+      
+        circleList.push(L.circle(stationLatLng, stationStop, {
+          stroke: false,
+          fillColor: stationColor,
+          fillOpacity: 1.0,
+    }).bindPopup(stationNamePopup));
+      
+    });
+      subStopsLayer = L.layerGroup(circleList);
+      subStopsLayer.addTo(mapB);
+    });
+    
+
+
+  getStops('geojson/stations.geojson', function (stops) {
+      var stopTypeSizes = {0: 60, 1: 90, 2: 120};
+      var circleList = [];
+      var stationNameList = [];
+
+      stops.eachLayer(function (marker) {
+        var stationColor = marker.options.base.line,
+            stationLatLng = [marker._latlng.lat, marker._latlng.lng],
+            stationStop = stopTypeSizes[marker.options.base.stopType],
+            stationName = marker.options.base.station,
+            stationNamePopup = L.popup({
+        closeButton: false,
+        className: 'station-sign'
+      }).setContent('<p style="background-color:'
+            +stationColor+';">'+stationName+'</p><br><p style="background-color: white;"></p>')
+      
+        circleList.push(L.circle(stationLatLng, stationStop, {
+          stroke: false,
+          fillColor: stationColor,
+          fillOpacity: 1.0,
+    }).bindPopup(stationNamePopup));
+      
+    });
+      subStopsLayer = L.layerGroup(circleList);
+      subStopsLayer.addTo(mapC);
+    });
+  
+</script>
+
+<!-- Leaflet Maps -->
+
+
+
+ 
+
+<!-- Instagram Image Scraper   -->
+
+  <script type="text/javascript">
+    var teamAfeed = new Instafeed({
+        target: "teamAfeed",
+        get: 'tagged',
+        tagName: 'BosBRTteamA',
+        clientId: '8e3d2c85b6a14c16a09471396ee8faa6',
+        resolution: 'low_resolution',
+        limit: 3
+    });
+
+    var teamBfeed = new Instafeed({
+        target: "teamBfeed",
+        get: 'tagged',
+        tagName: 'BosBRTteamB',
+        clientId: '8e3d2c85b6a14c16a09471396ee8faa6',
+        resolution: 'low_resolution',
+        limit: 3
+    });
+
+    var teamCfeed = new Instafeed({
+        target: "teamCfeed",
+        get: 'tagged',
+        tagName: 'seaurchin',
+        clientId: '8e3d2c85b6a14c16a09471396ee8faa6',
+        resolution: 'low_resolution',
+        limit: 3
+    });
+
+    teamAfeed.run();
+    teamBfeed.run();
+    teamCfeed.run();
+
+
+  </script>
+
+
+</head>
+
+<body>
+  <h1 style="font-weight: 200; margin-top: -10px; background-color: "> Scoreboard  |  BostonBRT   <span style="font-size: .5em">COMMUNITY CO-CREATION WORKSHOP @ROXBURY INNOVATION CENTER, BOSTON | OCT 2015</span> </h1>
+  <p></p>
+  <div class="col-md-3">
+    <h3 style="font-weight: 800">Region</h3>
+      <div class="reg-container"></div>
+    <h3 style="font-weight: 800">Neighborhood</h3>
+      <div class="neb-container"></div>
+    <h3 style="font-weight: 800">Street</h3>
+      <div class="st-container"></div>
+  </div>
+
+  <div class="col-md-3">
+    <h3>Team A  
+      <span style="color:#FFD700; font-size: .7em"><i class="fa fa-instagram"></i> #BosBRTteamA</span>
+    </h3>
+    <div id="mapA" style="width: 320px; height: 300px"></div>
+    <div id="teamAfeed" style="padding-top: 0px"></div>
+  </div>
+  <div class="col-md-3">
+    <h3>Team B
+      <span style="color:#ADD8E6; font-size: .7em"><i class="fa fa-instagram"></i> #BosBRTteamB</span>
+    </h3>
+    <div id="mapB" style="width: 320px; height: 300px"></div>
+    <div id="teamBfeed" style="padding-top: 0px"></div>
+  </div>
+  <div class="col-md-3">
+    <h3>Team C
+      <span style="color:gray; font-size: .7em"><i class="fa fa-instagram"></i> #BosBRTteamC</span>
+    </h3>
+    <div id="mapC" style="width: 320px; height: 300px"></div>
+    <div id="teamCfeed" style="padding-top: 0px"></div>
+  </div>
+  
+
+ <script>
+    var mapZoom = 12;
+    var mapCenter = [42.349791, -71.078016];
+    
+
+    // Map A
+    var mapA = L.map('mapA',{ center: mapCenter, zoom: mapZoom, zoomControl: false, attributionControl: false});
+              L.tileLayer('http://openmapsurfer.uni-hd.de/tiles/roadsg/x={x}&y={y}&z={z}', {maxZoom:15, minZoom:12 }).addTo(mapA);
+    
+
+    // Map B
+    var mapB = L.map('mapB',{ center: mapCenter, zoom: mapZoom, zoomControl: false,  attributionControl: false});
+              L.tileLayer('http://openmapsurfer.uni-hd.de/tiles/roadsg/x={x}&y={y}&z={z}', {maxZoom:15, minZoom:12 }).addTo(mapB);
+    
+
+    // Map C
+    var mapC = L.map('mapC',{ center: mapCenter, zoom: mapZoom, zoomControl: false,  attributionControl: false});
+              L.tileLayer('http://openmapsurfer.uni-hd.de/tiles/roadsg/x={x}&y={y}&z={z}', {maxZoom:15, minZoom:12 }).addTo(mapC);
+     
+
+</script>
+
+  
+
+
+  <script type="text/javascript">
+    RadarChart.defaultConfig.levelTick = true;
+    RadarChart.defaultConfig.w = 270;
+    RadarChart.defaultConfig.h = 270;
+    RadarChart.draw(".reg-container", randomDataset());
+    RadarChart.draw(".neb-container", regData);
+    RadarChart.draw(".st-container", data);
+
+  </script>
+
+
+
+</body>
+</html>
